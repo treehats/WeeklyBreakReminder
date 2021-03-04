@@ -24,8 +24,7 @@ namespace WeeklyBreakReminder
         public override void Entry(IModHelper helper)
         {
             this.Config = this.Helper.ReadConfig<ModConfig>();
-            var api = Helper.ModRegistry.GetApi<IModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
-
+            
             showStartupNotice = this.Config.ShowStartupNotice;
             interval = this.Config.DaysBetweenBreaks;
             // Cap the interval at one month; nobody should set it this high, but just in case...
