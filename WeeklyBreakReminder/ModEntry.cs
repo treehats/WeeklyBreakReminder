@@ -1,9 +1,11 @@
 ﻿using System;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 using StardewValley.Menus;
 using StardewValley;
+using System.Collections.Generic;
 
 namespace WeeklyBreakReminder
 {
@@ -11,18 +13,27 @@ namespace WeeklyBreakReminder
     public class ModEntry : Mod
     {
         private ModConfig Config;
-        private int messageDay;
         private bool doStartup = false;
-        private readonly bool relativeMode = true;
         private bool showStartupNotice = true;
+        private int startDay;
+        private int interval = 7;
 
         /*********
         ** Public methods
         *********/
         public override void Entry(IModHelper helper)
         {
-            this.Config = base.Helper.ReadConfig<ModConfig>();
-            this.showStartupNotice = this.Config.ShowStartupNotice;
+            this.Config = this.Helper.ReadConfig<ModConfig>();
+            var api = Helper.ModRegistry.GetApi<IModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
+
+            showStartupNotice = this.Config.ShowStartupNotice;
+            interval = this.Config.DaysBetweenBreaks;
+            // Cap the interval at one month; nobody should set it this high, but just in case...
+            if (interval > 28)
+            {
+                interval = 28;
+            }
+
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
         }
@@ -32,62 +43,80 @@ namespace WeeklyBreakReminder
         *********/
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
-            if (relativeMode)
-            {
-                messageDay = Game1.dayOfMonth % 7;
-            }
+            startDay = SDate.Now().DaysSinceStart;
             doStartup = true;
         }
 
         private void OnDayStarted(object sender, DayStartedEventArgs e)
         {
-            bool flag = this.doStartup;
-            if (flag)
+            var today = SDate.Now();
+            int dayDelta = today.DaysSinceStart - startDay;
+            if (doStartup)
             {
-                bool flag2 = this.showStartupNotice;
-                if (flag2)
+                if (showStartupNotice)
                 {
-                    Game1.addHUDMessage(new HUDMessage("You will be reminded to take a break on the next " + this.GetDayOfWeek(this.messageDay) + ".", 2));
+                    if (interval % 7 == 0)
+                    {
+                        Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break on the next {today.DayOfWeek}.", 2));
+                    }
+                    else
+                    {
+                        Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break every {interval} days.", 2));
+                    }
                 }
-                this.Monitor.Log($"Current day on game load is {Game1.shortDayDisplayNameFromDayOfSeason(Game1.dayOfMonth)} {Game1.dayOfMonth} {Game1.currentSeason}. \nBreak reminders will occur on {this.GetDayOfWeek(this.messageDay)}s.", LogLevel.Debug);
-                this.doStartup = false;
+                this.Monitor.Log($"Current day on game load is {today.DayOfWeek} {today.Day} {today.Season}. \nBreak reminders will occur every {interval} days.", LogLevel.Debug);
+                doStartup = false;
             }
-            else
+            else if (dayDelta % interval == 0)
             {
-                bool flag3 = Game1.dayOfMonth % 7 == this.messageDay && this.relativeMode;
-                if (flag3)
-                {
-                    Game1.activeClickableMenu = new DialogueBox(this.GenerateMessage(true));
-                }
+                Game1.activeClickableMenu = new DialogueBox(GenerateMessage(true));
             }
         }
 
         private String GenerateMessage(bool isSessionMessage)
         {
-            string breakMessage = "This might be a good time to take a break.";
-            bool flag = Game1.dayOfMonth % 7 == 1;
-            string announcementMessage;
-            if (flag)
+            String announcementMessage;
+            String breakMessage = "This might be a good time to take a break.";
+            if (Game1.dayOfMonth % 7 == 1 && interval % 7 == 0)
             {
                 // Special message for Mondays, which are the start of the week in Stardew Valley
                 announcementMessage = "It's the start of a new week!";
             }
             else if (isSessionMessage)
             {
-                announcementMessage = "Another week has passed!";
+                if (interval % 7 == 0)
+                {
+                    if (interval > 7)
+                    {
+                        announcementMessage = $"Another {GetNumName(interval / 7)} weeks have passed!";
+                    }
+                    else
+                    {
+                        announcementMessage = "Another week has passed!";
+                    }
+                }
+                else if (interval <= 10)
+                {
+                    if (interval > 1)
+                    {
+                        announcementMessage = $"Another {GetNumName(interval)} days have passed!";
+                    }
+                    else
+                    {
+                        announcementMessage = $"Another day has passed!";
+                    }
+                }
+                else
+                {
+                    announcementMessage = $"Another {interval} days have passed!";
+                }
             }
             else
             {
-                announcementMessage = "It's " + this.GetDayOfWeek(Game1.dayOfMonth % 7) + " again.";
+                announcementMessage = $"It's {GetDayOfWeek(Game1.dayOfMonth % 7)} again.";
             }
-            return string.Concat(new string[]
-            {
-                "^",
-                announcementMessage,
-                " ^^",
-                breakMessage,
-                "^"
-            });
+
+            return $"^{announcementMessage} ^^{breakMessage}^";
         }
 
         private String GetDayOfWeek(int day)
