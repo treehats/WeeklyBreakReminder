@@ -12,6 +12,16 @@ namespace WeeklyBreakReminder
     /// <summary>The mod entry point.</summary>
     public class ModEntry : Mod
     {
+
+        //TODO
+        // Avoid message conflicts:
+        // 1. When sending message, check if one already exists; if so, set a "waiting" bool
+        // 2. Use OnSecondUpdateTicked to track waiting bool
+        // 3. When waiting bool is true, check if anything is on screen with Context.IsPlayerFree
+        // 4. Once player is free, send message and clear waiting bool
+
+
+
         private ModConfig Config;
         private bool doStartup = false;
         private bool showStartupNotice = true;
@@ -23,26 +33,36 @@ namespace WeeklyBreakReminder
         *********/
         public override void Entry(IModHelper helper)
         {
-            this.Config = this.Helper.ReadConfig<ModConfig>();
-            var api = Helper.ModRegistry.GetApi<IModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
-
-            showStartupNotice = this.Config.ShowStartupNotice;
-            interval = this.Config.DaysBetweenBreaks;
-            // Cap the interval at one month; nobody should set it this high, but just in case...
-            if (interval > 28)
-            {
-                interval = 28;
-            }
+            this.Config = this.Helper.ReadConfig<ModConfig>();      
 
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
+            helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
         }
 
         /*********
         ** Private methods
         *********/
+        private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
+        {
+            var api = Helper.ModRegistry.GetApi<IModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
+            api.RegisterModConfig(this.ModManifest, () => this.Config = new ModConfig(), () => this.Helper.WriteConfig(this.Config));
+            api.RegisterSimpleOption(this.ModManifest, "Display Startup Message", "Display a message stating the frequency of break reminders on save load",
+                () => this.Config.ShowStartupNotice, (bool val) => this.Config.ShowStartupNotice = val);
+            api.RegisterClampedOption(this.ModManifest, "Days Between Breaks", "How many days should pass before a break reminder occurs (default 7)",
+                () => this.Config.DaysBetweenBreaks, (int val) => this.Config.DaysBetweenBreaks = val, 1, 28);
+        }
+
+
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
+            showStartupNotice = this.Config.ShowStartupNotice;
+            interval = this.Config.DaysBetweenBreaks;
+            // Cap the interval at one month; nobody should set it this high, but just in case...
+            //if (interval > 28)
+            //{
+            //    interval = 28;
+            //}
             startDay = SDate.Now().DaysSinceStart;
             doStartup = true;
         }
