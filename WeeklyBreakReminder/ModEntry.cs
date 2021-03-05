@@ -39,20 +39,11 @@ namespace WeeklyBreakReminder
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
             helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
-            helper.Events.GameLoop.OneSecondUpdateTicking += this.OnSecondUpdate;
         }
 
         /*********
         ** Private methods
         *********/
-
-        private void OnSecondUpdate(object sender, OneSecondUpdateTickingEventArgs e)
-        {
-            // Trying to detect if dialogue on screen
-            this.Monitor.Log($"ACM on second update ticking: {Game1.activeClickableMenu}", LogLevel.Debug);
-            this.Monitor.Log($"IsPlayerFree on second update ticking: {Context.IsPlayerFree}", LogLevel.Debug);
-        }
-
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
             var api = Helper.ModRegistry.GetApi<IModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
@@ -70,20 +61,12 @@ namespace WeeklyBreakReminder
         {
             showStartupNotice = this.Config.ShowStartupNotice;
             interval = this.Config.DaysBetweenBreaks;
-            // Cap the interval at one month; nobody should set it this high, but just in case...
-            //if (interval > 28)
-            //{
-            //    interval = 28;
-            //}
             startDay = SDate.Now().DaysSinceStart;
             doStartup = true;
         }
 
         private void OnDayStarted(object sender, DayStartedEventArgs e)
         {
-            // Trying to detect if dialogue on screen
-            this.Monitor.Log($"ACM on day started: {Game1.activeClickableMenu}", LogLevel.Debug);
-            this.Monitor.Log($"IsPlayerFree on day started: {Context.IsPlayerFree}", LogLevel.Debug);
             var today = SDate.Now();
             int dayDelta = today.DaysSinceStart - startDay;
             bool isCompactMsg = this.Config.CompactMessages;
@@ -112,7 +95,5 @@ namespace WeeklyBreakReminder
                 Game1.activeClickableMenu = new DialogueBox(messages.GenerateMessage(interval, today.Day, isCompactMsg));
             }
         }
-
-        
     }
 }
