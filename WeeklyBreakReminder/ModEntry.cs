@@ -12,7 +12,7 @@ namespace WeeklyBreakReminder
     /// <summary>The mod entry point.</summary>
     public class ModEntry : Mod
     {
-
+        
         //TODO
         // Avoid message conflicts:
         // 1. When sending message, check if one already exists; if so, set a "waiting" bool
@@ -27,6 +27,7 @@ namespace WeeklyBreakReminder
         private bool showStartupNotice = true;
         private int startDay;
         private int interval = 7;
+        private MessageGenerator messages;
 
         /*********
         ** Public methods
@@ -38,19 +39,30 @@ namespace WeeklyBreakReminder
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
             helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
+            helper.Events.GameLoop.OneSecondUpdateTicking += this.OnSecondUpdate;
         }
 
         /*********
         ** Private methods
         *********/
+
+        private void OnSecondUpdate(object sender, OneSecondUpdateTickingEventArgs e)
+        {
+            // Trying to detect if dialogue on screen
+            this.Monitor.Log($"ACM on second update ticking: {Game1.activeClickableMenu}", LogLevel.Debug);
+            this.Monitor.Log($"IsPlayerFree on second update ticking: {Context.IsPlayerFree}", LogLevel.Debug);
+        }
+
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
             var api = Helper.ModRegistry.GetApi<IModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
             api.RegisterModConfig(this.ModManifest, () => this.Config = new ModConfig(), () => this.Helper.WriteConfig(this.Config));
-            api.RegisterSimpleOption(this.ModManifest, "Display Startup Message", "Display a message stating the frequency of break reminders on save load",
+            api.RegisterSimpleOption(this.ModManifest, "Display Startup Message", "Display a message stating the frequency of break reminders when you start playing.",
                 () => this.Config.ShowStartupNotice, (bool val) => this.Config.ShowStartupNotice = val);
-            api.RegisterClampedOption(this.ModManifest, "Days Between Breaks", "How many days should pass before a break reminder occurs (default 7)",
-                () => this.Config.DaysBetweenBreaks, (int val) => this.Config.DaysBetweenBreaks = val, 1, 28);
+            api.RegisterClampedOption(this.ModManifest, "Days Between Breaks", "How many days should pass before a break reminder occurs.",
+                () => this.Config.DaysBetweenBreaks, (int val) => this.Config.DaysBetweenBreaks = val, 1, 14);
+            api.RegisterSimpleOption(this.ModManifest, "Use Compact Messages", "Select to make the messages take up less screen space.",
+                () => this.Config.CompactMessages, (bool val) => this.Config.CompactMessages = val);
         }
 
 
@@ -69,13 +81,21 @@ namespace WeeklyBreakReminder
 
         private void OnDayStarted(object sender, DayStartedEventArgs e)
         {
+            // Trying to detect if dialogue on screen
+            this.Monitor.Log($"ACM on day started: {Game1.activeClickableMenu}", LogLevel.Debug);
+            this.Monitor.Log($"IsPlayerFree on day started: {Context.IsPlayerFree}", LogLevel.Debug);
             var today = SDate.Now();
             int dayDelta = today.DaysSinceStart - startDay;
+            bool isCompactMsg = this.Config.CompactMessages;
             if (doStartup)
             {
                 if (showStartupNotice)
                 {
-                    if (interval % 7 == 0)
+                    if (interval == 1)
+                    {
+                        Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break every day.", 2));
+                    }
+                    else if (interval % 7 == 0)
                     {
                         Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break on the next {today.DayOfWeek}.", 2));
                     }
@@ -89,67 +109,10 @@ namespace WeeklyBreakReminder
             }
             else if (dayDelta % interval == 0)
             {
-                Game1.activeClickableMenu = new DialogueBox(GenerateMessage(true));
+                Game1.activeClickableMenu = new DialogueBox(messages.GenerateMessage(interval, today.Day, isCompactMsg));
             }
         }
 
-        private String GenerateMessage(bool isSessionMessage)
-        {
-            String announcementMessage;
-            String breakMessage = "This might be a good time to take a break.";
-            if (Game1.dayOfMonth % 7 == 1 && interval % 7 == 0)
-            {
-                // Special message for Mondays, which are the start of the week in Stardew Valley
-                announcementMessage = "It's the start of a new week!";
-            }
-            else if (isSessionMessage)
-            {
-                if (interval % 7 == 0)
-                {
-                    if (interval > 7)
-                    {
-                        announcementMessage = $"Another {GetNumName(interval / 7)} weeks have passed!";
-                    }
-                    else
-                    {
-                        announcementMessage = "Another week has passed!";
-                    }
-                }
-                else if (interval <= 10)
-                {
-                    if (interval > 1)
-                    {
-                        announcementMessage = $"Another {GetNumName(interval)} days have passed!";
-                    }
-                    else
-                    {
-                        announcementMessage = $"Another day has passed!";
-                    }
-                }
-                else
-                {
-                    announcementMessage = $"Another {interval} days have passed!";
-                }
-            }
-            else
-            {
-                announcementMessage = $"It's {GetDayOfWeek(Game1.dayOfMonth % 7)} again.";
-            }
-
-            return $"^{announcementMessage} ^^{breakMessage}^";
-        }
-
-        private String GetDayOfWeek(int day)
-        {
-            // Helper method for cleaner getting of the day name
-            String[] dayName = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
-            return dayName[day - 1];
-        }
-
-        private String GetNumName(int num)
-        {
-            String[] numeralName = { "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" };
-            return numeralName[num];
-        }
+        
     }
 }
