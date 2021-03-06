@@ -9,16 +9,6 @@ namespace WeeklyBreakReminder
     /// <summary>The mod entry point.</summary>
     public class ModEntry : Mod
     {
-        
-        //TODO
-        // Avoid message conflicts:
-        // 1. When sending message, check if one already exists; if so, set a "waiting" bool
-        // 2. Use OnSecondUpdateTicked to track waiting bool
-        // 3. When waiting bool is true, check if anything is on screen with Context.IsPlayerFree
-        // 4. Once player is free, send message and clear waiting bool
-
-
-
         private ModConfig Config;
         private MessageGenerator Messages;
         private bool doStartup = false;
@@ -78,7 +68,6 @@ namespace WeeklyBreakReminder
                         Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break every {interval} days.", 2));
                     }
                 }
-                this.Monitor.Log($"Break reminders will occur every {interval} days.", LogLevel.Debug);
                 doStartup = false;
             }
             else if (dayDelta % interval == 0)
@@ -95,6 +84,7 @@ namespace WeeklyBreakReminder
             {
                 return;
             }
+
             api.RegisterModConfig(this.ModManifest, () => this.Config = new ModConfig(), () => this.Helper.WriteConfig(this.Config));
             api.RegisterSimpleOption(this.ModManifest, "Display Startup Message", "Display a message stating the frequency of break reminders when you start playing.",
                 () => this.Config.ShowStartupNotice, (bool val) => this.Config.ShowStartupNotice = val);
