@@ -1,13 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WeeklyBreakReminder
 {
-    public class MessageGenerator
+    class MessageGenerator
     {
+
+        public MessageGenerator()
+        {
+
+        }
+
         public String GenerateMessage(int interval, int day, bool compact)
         {
             String announcementMessage;
@@ -49,7 +51,7 @@ namespace WeeklyBreakReminder
 
             if (compact)
             {
-                return $"{announcementMessage} {breakMessage} ";
+                return $"{announcementMessage}^ {breakMessage} ";
             }
             else
             {

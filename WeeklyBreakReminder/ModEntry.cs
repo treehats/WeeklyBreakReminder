@@ -1,11 +1,8 @@
-﻿using System;
-using Microsoft.Xna.Framework;
-using StardewModdingAPI;
+﻿using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 using StardewValley.Menus;
 using StardewValley;
-using System.Collections.Generic;
 
 namespace WeeklyBreakReminder
 {
@@ -23,18 +20,19 @@ namespace WeeklyBreakReminder
 
 
         private ModConfig Config;
+        private MessageGenerator Messages;
         private bool doStartup = false;
         private bool showStartupNotice = true;
         private int startDay;
         private int interval = 7;
-        private MessageGenerator messages;
 
         /*********
         ** Public methods
         *********/
         public override void Entry(IModHelper helper)
         {
-            this.Config = this.Helper.ReadConfig<ModConfig>();      
+            this.Config = this.Helper.ReadConfig<ModConfig>();
+            this.Messages = new MessageGenerator();
 
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
@@ -46,16 +44,9 @@ namespace WeeklyBreakReminder
         *********/
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
-            var api = Helper.ModRegistry.GetApi<IModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
-            api.RegisterModConfig(this.ModManifest, () => this.Config = new ModConfig(), () => this.Helper.WriteConfig(this.Config));
-            api.RegisterSimpleOption(this.ModManifest, "Display Startup Message", "Display a message stating the frequency of break reminders when you start playing.",
-                () => this.Config.ShowStartupNotice, (bool val) => this.Config.ShowStartupNotice = val);
-            api.RegisterClampedOption(this.ModManifest, "Days Between Breaks", "How many days should pass before a break reminder occurs.",
-                () => this.Config.DaysBetweenBreaks, (int val) => this.Config.DaysBetweenBreaks = val, 1, 14);
-            api.RegisterSimpleOption(this.ModManifest, "Use Compact Messages", "Select to make the messages take up less screen space.",
-                () => this.Config.CompactMessages, (bool val) => this.Config.CompactMessages = val);
+            // Try to set up the Generic Mod Config Menu integration, if it exists
+            SetupConfigMenu();
         }
-
 
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
@@ -87,13 +78,30 @@ namespace WeeklyBreakReminder
                         Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break every {interval} days.", 2));
                     }
                 }
-                this.Monitor.Log($"Current day on game load is {today.DayOfWeek} {today.Day} {today.Season}. \nBreak reminders will occur every {interval} days.", LogLevel.Debug);
+                this.Monitor.Log($"Break reminders will occur every {interval} days.", LogLevel.Debug);
                 doStartup = false;
             }
             else if (dayDelta % interval == 0)
             {
-                Game1.activeClickableMenu = new DialogueBox(messages.GenerateMessage(interval, today.Day, isCompactMsg));
+                Game1.activeClickableMenu = new DialogueBox(Messages.GenerateMessage(interval, today.Day, isCompactMsg));
             }
+        }
+
+        private void SetupConfigMenu()
+        {
+            var api = Helper.ModRegistry.GetApi<IModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
+
+            if (api == null)
+            {
+                return;
+            }
+            api.RegisterModConfig(this.ModManifest, () => this.Config = new ModConfig(), () => this.Helper.WriteConfig(this.Config));
+            api.RegisterSimpleOption(this.ModManifest, "Display Startup Message", "Display a message stating the frequency of break reminders when you start playing.",
+                () => this.Config.ShowStartupNotice, (bool val) => this.Config.ShowStartupNotice = val);
+            api.RegisterClampedOption(this.ModManifest, "Days Between Breaks", "How many days should pass before a break reminder occurs.",
+                () => this.Config.DaysBetweenBreaks, (int val) => this.Config.DaysBetweenBreaks = val, 1, 14);
+            api.RegisterSimpleOption(this.ModManifest, "Use Compact Messages", "Select to make the messages take up less screen space.",
+                () => this.Config.CompactMessages, (bool val) => this.Config.CompactMessages = val);
         }
     }
 }
