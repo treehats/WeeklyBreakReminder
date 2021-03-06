@@ -59,11 +59,20 @@ namespace WeeklyBreakReminder
             }
         }
 
-        public String GetDayOfWeek(int day)
+        public String GenerateStartupMessage(int interval, String dayOfWeek)
         {
-            // Helper method for cleaner getting of the day name
-            String[] dayName = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
-            return dayName[day - 1];
+            if (interval == 1)
+            {
+                return "You will be reminded to take a break every day.";
+            }
+            else if (interval % 7 == 0)
+            {
+                return $"You will be reminded to take a break on the next {dayOfWeek}.";
+            }
+            else
+            {
+                return $"You will be reminded to take a break every {interval} days.";
+            }
         }
 
         public String GetNumName(int num)

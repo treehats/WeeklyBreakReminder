@@ -55,18 +55,7 @@ namespace WeeklyBreakReminder
             {
                 if (showStartupNotice)
                 {
-                    if (interval == 1)
-                    {
-                        Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break every day.", 2));
-                    }
-                    else if (interval % 7 == 0)
-                    {
-                        Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break on the next {today.DayOfWeek}.", 2));
-                    }
-                    else
-                    {
-                        Game1.addHUDMessage(new HUDMessage($"You will be reminded to take a break every {interval} days.", 2));
-                    }
+                    Game1.addHUDMessage(new HUDMessage(Messages.GenerateStartupMessage(interval, today.DayOfWeek.ToString()), 2));
                 }
                 doStartup = false;
             }
@@ -82,7 +71,7 @@ namespace WeeklyBreakReminder
 
             if (api == null)
             {
-                return;
+                return; // Return if the Generic Mod Config Menu API can't be found, so we don't create an error
             }
 
             api.RegisterModConfig(this.ModManifest, () => this.Config = new ModConfig(), () => this.Helper.WriteConfig(this.Config));
